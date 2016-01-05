@@ -1,3 +1,6 @@
+library("TTR")
+library(XML)
+
 read_gpx <- function(file){
   # Parse the GPX file
   pfile <- htmlTreeParse(file, error = function (...) {}, useInternalNodes = T)
@@ -15,4 +18,12 @@ read_gpx <- function(file){
   track <- data.frame(lat = lats, lon = lons, ele = elevations, time = times)
   
   return(track) 
+}
+
+smooth_gpx <- function(track){
+  track$lat <- SMA(track$lat)
+  track$lon <- SMA(track$lon)
+  track$ele <- SMA(track$ele)
+  
+  return(track)
 }
