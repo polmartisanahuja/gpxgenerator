@@ -59,5 +59,20 @@ find_edges <- function(id_overlap){
     df_edges$min[i] <- min(id_overlap[id_edges[2*i-1]:id_edges[2*i]])
     df_edges$max[i] <- max(id_overlap[id_edges[2*i-1]:id_edges[2*i]])
   }
+  df_edges$id_track <- 1:nrow(df_edges)
   return(df_edges)
+}
+
+edges <- function(track){
+  track_overlap <- track[track$nearest != 0,]
+  edges <- rbind(find_edges(track[track$nearest != 0,]$nearest), find_edges(as.numeric(rownames(track_overlap))))
+  edges <- edges[order(edges$min),]
+  m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20
+  
+  edges_clean <- edges[m,]
+  edges_clean[which(!m),]$min <- edges[!m,]$min
+  
+  rownames(edges_clean) <- 1:nrow(edges_clean)
+  
+  return(edges_clean)
 }

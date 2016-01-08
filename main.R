@@ -13,24 +13,20 @@ track <- track1[(!is.na(track1$lat)),]
 rownames(track) <- 1:nrow(track)
 
 track <- nearest_gpx(track)
+edges_clean <- edges(track)
 
-track_overlap <- track[track$nearest != 0,]
+n_track_overlap <- max(edges_clean$id_track)
 
-edges <- rbind(find_edges(track[track$nearest != 0,]$nearest), find_edges(as.numeric(rownames(track_overlap))))
-
-edges <- edges[order(edges$min),]
-
-m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20
-
-edges_clean <- edges[m,]
-edges_clean[which(!m),]$min <- edges[!m,]$min
-
-mask <- c()
-for (i in 1:nrow(edges_clean)){
-  mask <- c(mask, edges_clean$min[i]:edges_clean$max[i])
+for (i in 1:(nrow(edges_clean)-1)){
+  edges_clean <- rbind(edges_clean, c(edges_clean$max[i]+1, edges_clean$min[i+1]-1, i+n_track_overlap))  
 }
 
-track_clean <- track[setdiff(1:nrow(track), mask),]
+#mask <- c()
+#for (i in 1:nrow(edges_clean)){
+#  mask <- c(mask, edges_clean$min[i]:edges_clean$max[i])
+#}
+
+#track_clean <- track[setdiff(1:nrow(track), mask),]
 #plot3d(track$lon, track$lat, track$ele, type='l', col='blue')
 plot3d(track_clean$lon, track_clean$lat, track_clean$ele, type='p', col='red')
 
