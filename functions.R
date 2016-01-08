@@ -67,12 +67,72 @@ edges <- function(track){
   track_overlap <- track[track$nearest != 0,]
   edges <- rbind(find_edges(track[track$nearest != 0,]$nearest), find_edges(as.numeric(rownames(track_overlap))))
   edges <- edges[order(edges$min),]
+  
   m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20
   
-  edges_clean <- edges[m,]
-  edges_clean[which(!m),]$min <- edges[!m,]$min
+  if(nrow(edges)>2){
+    edges_clean <- edges[m,]
+    edges_clean[which(!m),]$min <- edges[!m,]$min
+  }else{
+    edges_clean <- edges
+  }
   
   rownames(edges_clean) <- 1:nrow(edges_clean)
   
   return(edges_clean)
+}
+
+edges_reduce <- function(edges_clean, track){ 
+  n_track_overlap <- max(edges_clean$id_track)
+  
+  for (i in 1:(nrow(edges_clean)-1)){
+    edges_clean <- rbind(edges_clean, c(edges_clean$max[i]+1, edges_clean$min[i+1]-1, i+n_track_overlap))  
+  }
+  
+  if(min(edges_clean$min) != 1) edges_clean <- rbind(edges_clean, c(0, min(edges_clean$min), i+n_track_overlap+1))  
+  if(paste(edges_clean$min) != length(track)) edges_clean <- rbind(edges_clean, c(max(edges_clean$min), nrow(track), i+n_track_overlap+2)) 
+  
+  rownames(edges_clean) <- 1:nrow(edges_clean)
+  
+  n_track_overlap <- max(edges_clean$id_track)
+  
+  df_edges <- data.frame(min=numeric(n_track_overlap), max=numeric(n_track_overlap),  id_track=numeric(n_track_overlap) )
+  for (i in 1:n_track_overlap){
+    df_edges[i,] <- edges_clean[edges_clean$id_track==i,][1,]
+  }
+  
+  return(df_edges)
+  
+}
+
+track_split <- function(track, df_edges){
+  df_list <- list()
+  for (i in 1:nrow(df_edges)){
+    id_points <- df_edges$min[i]:df_edges$max[i]
+    df_list[[i]] <-  data.frame(lon = track$lon[id_points], lat = track$lat[id_points], ele = track$ele[id_points],  id_track=i)
+  }
+  
+  return(df_list)
+}
+
+split_gpx <- function(track){
+  
+  track <- nearest_gpx(track)
+  edges_clean <- edges(track)
+  df_edges <- edges_reduce(edges_clean, track)
+  df_list <- track_split(track, df_edges)
+  
+  return(df_list)
+}
+
+plot_gpx <- function(track_list){
+  plot3d(track_list[[1]]$lon, track_list[[1]]$lat, track_list[[1]]$ele, type='l', col=palette()[1], 
+         xlim=c(min(track$lon),max(track$lon)),
+         ylim=c(min(track$lat),max(track$lat)),
+         zlim=c(min(track$ele),max(track$ele))
+         )
+  
+  for (i in 2:length(track_list)){
+    lines3d(track_list[[i]]$lon, track_list[[i]]$lat, track_list[[i]]$ele,  col=palette()[i])
+  }
 }
