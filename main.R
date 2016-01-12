@@ -2,26 +2,21 @@ library(rgl)
 source("functions.R")
 
 ######### Main ########
-file1 = "tracks/trencacames-per-st-llorenc-i-lobac.gpx"
-track <- read_gpx(file1)
-track <- smooth_gpx(track)
+path <- "tracks/"
+file_list = c("trencacames-per-st-llorenc-i-lobac.gpx",
+              "hospital-de-sang-serra-de-lobac.gpx",
+              "6a-caminada-popular-cims-dels-tres-turons.gpx")
+i=3
 
+track <- read_gpx(paste0(path, file_list[i]))
+track <- smooth_gpx(track)
 track <- track[(!is.na(track$lat)),]
+
+plot3d(track$lon, track$lat, track$ele, type='p',  col='blue')
+#lines3d(track$lon, track$lat, track$ele,  col='yellow')
+#points3d(track$lon, track$lat, track$ele,  col='yellow')
+
 rownames(track) <- 1:nrow(track)
 
 track_list <- split_gpx(track)
-plot_gpx(track_list)
-
-
-file2 = "tracks/hospital-de-sang-serra-de-lobac.gpx"
-
-track <- read_gpx(file2)
-track <- smooth_gpx(track)
-
-track <- track[(!is.na(track$lat)),]
-rownames(track) <- 1:nrow(track)
-
-plot3d(track$lon, track$lat, track$ele, type='l', col=palette()[1])
-
-track_list <- split_gpx(track)
-plot_gpx(track_list)
+plot_gpx(track_list, track)

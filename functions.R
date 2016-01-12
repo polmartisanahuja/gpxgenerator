@@ -74,7 +74,10 @@ edges <- function(track){
     edges_clean <- edges[m,]
     edges_clean[which(!m),]$min <- edges[!m,]$min
   }else{
-    edges_clean <- edges
+    if(!m){
+      edges_clean <- edges[2,]
+      edges_clean[1,]$min<- edges[1,]$min
+    }
   }
   
   rownames(edges_clean) <- 1:nrow(edges_clean)
@@ -84,13 +87,19 @@ edges <- function(track){
 
 edges_reduce <- function(edges_clean, track){ 
   n_track_overlap <- max(edges_clean$id_track)
-  
-  for (i in 1:(nrow(edges_clean)-1)){
-    edges_clean <- rbind(edges_clean, c(edges_clean$max[i]+1, edges_clean$min[i+1]-1, i+n_track_overlap))  
+
+  if(n_track_overlap>1){
+    for (i in 1:(nrow(edges_clean)-1)){
+      edges_clean <- rbind(edges_clean, c(edges_clean$max[i]+1, edges_clean$min[i+1]-1, i+n_track_overlap))  
+    }
+  }else{
+    i <- 1
   }
   
-  if(min(edges_clean$min) != 1) edges_clean <- rbind(edges_clean, c(0, min(edges_clean$min), i+n_track_overlap+1))  
-  if(paste(edges_clean$min) != length(track)) edges_clean <- rbind(edges_clean, c(max(edges_clean$min), nrow(track), i+n_track_overlap+2)) 
+  if(min(edges_clean$min) != 1) edges_clean <- rbind(edges_clean, c(1, min(edges_clean$min)-1, i+n_track_overlap))  
+  if(max(edges_clean$max) != nrow(track)) edges_clean <- rbind(edges_clean, c(max(edges_clean$max)+1, nrow(track), i+n_track_overlap+1)) 
+  
+  n_track_overlap <- max(edges_clean$id_track)
   
   rownames(edges_clean) <- 1:nrow(edges_clean)
   
@@ -125,7 +134,7 @@ split_gpx <- function(track){
   return(df_list)
 }
 
-plot_gpx <- function(track_list){
+plot_gpx <- function(track_list, track){
   plot3d(track_list[[1]]$lon, track_list[[1]]$lat, track_list[[1]]$ele, type='l', col=palette()[1], 
          xlim=c(min(track$lon),max(track$lon)),
          ylim=c(min(track$lat),max(track$lat)),
