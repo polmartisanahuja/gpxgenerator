@@ -39,8 +39,8 @@ nearest_gpx <- function(track){
     Dlon = track$lon[i] - track$lon[1:i]
     D = sqrt(Dlat^2+Dlon^2)
     
-    id_near <- which(3*step_distance > D)
-    id_near <- id_near[abs(i-id_near)>20]
+    id_near <- which(2*step_distance > D)
+    id_near <- id_near[abs(i-id_near)>15]
     if(length(id_near)>0){
       id_nearest <- id_near[which(min(D[id_near]) == D[id_near])]
       track$nearest[i] <- id_nearest
@@ -68,15 +68,21 @@ edges <- function(track){
   edges <- rbind(find_edges(track[track$nearest != 0,]$nearest), find_edges(as.numeric(rownames(track_overlap))))
   edges <- edges[order(edges$min),]
   
-  m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20
+  m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20 
+  m <- c(m,TRUE)
+  m_false <- which(m)
+  m_true <- which(!m)
   
   if(nrow(edges)>2){
+    edges[m_true+1,]$min <- edges[m_true,]$min
     edges_clean <- edges[m,]
-    edges_clean[which(!m),]$min <- edges[!m,]$min
+    #edges_clean[which(!m),]$min <- min_edges
   }else{
     if(!m){
       edges_clean <- edges[2,]
       edges_clean[1,]$min<- edges[1,]$min
+    }else{
+      edges_clean <- edges[2,]
     }
   }
   
@@ -88,7 +94,7 @@ edges <- function(track){
 edges_reduce <- function(edges_clean, track){ 
   n_track_overlap <- max(edges_clean$id_track)
 
-  if(n_track_overlap>1){
+  if(nrow(edges_clean)>1){
     for (i in 1:(nrow(edges_clean)-1)){
       edges_clean <- rbind(edges_clean, c(edges_clean$max[i]+1, edges_clean$min[i+1]-1, i+n_track_overlap))  
     }
@@ -144,4 +150,17 @@ plot_gpx <- function(track_list, track){
   for (i in 2:length(track_list)){
     lines3d(track_list[[i]]$lon, track_list[[i]]$lat, track_list[[i]]$ele,  col=palette()[i])
   }
+}
+
+remove_short <- function(track_list){
+  track_list_clean <- list()
+  j=1
+  for (i in 1:length(track_list)){
+    if(nrow(track_list[[i]])>15){
+      track_list_clean[[j]] <- track_list[[i]]
+      j <- 1 + j
+    }
+  }
+  
+  return(track_list_clean)
 }
