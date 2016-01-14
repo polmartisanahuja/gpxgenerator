@@ -3,11 +3,15 @@ library("RJSONIO")
 library("TTR")
 library(XML)
 library(rgl)
+library(MASS)
+library(gplots)
+library(zoom)
 
-for (i in seq(10,1000,10)){
+for (i in seq(10,200,10)){
   print(i)
   
   wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=collserola&from=", i-10,"&to=",i))
+  #wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=sant+lloren%C3%A7+del+munt&from", i-10,"&to=",i))
   
   track_link <- wikiloc %>% 
        html_nodes("h3") %>%
@@ -40,4 +44,11 @@ for (i in seq(10,1000,10)){
   }
 }
 
-plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.')
+#plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.')
+#plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue')
+#h2 <- hist2d(data.frame(x = track_base$lon,  y = track_base$lat), nbins=2000)
+
+#zm()
+plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
+plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
+plot3d(track_base$lon, track_base$lat, 0, type='p',  col='blue', pch='.')

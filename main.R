@@ -7,7 +7,7 @@ file_list = c("trencacames-per-st-llorenc-i-lobac.gpx",
               "hospital-de-sang-serra-de-lobac.gpx",
               "6a-caminada-popular-cims-dels-tres-turons.gpx",
               "la-mola-per-morral-del-drac-i-baixada-per-la-canal-del-mico.gpx")
-i=4
+i=1
 
 track <- read_gpx(paste0(path, file_list[i]))
 track <- smooth_gpx(track)
