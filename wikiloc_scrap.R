@@ -7,6 +7,8 @@ library(MASS)
 library(gplots)
 library(zoom)
 
+remove("track_base")
+
 for (i in seq(10,200,10)){
   print(i)
   
@@ -38,9 +40,11 @@ for (i in seq(10,200,10)){
     lat <- a$at$a
     
     #print(length(lon))
-    
-    if((i==10) & (j==1)){track_base <- data.frame(lat = lat, lon = lon, ele = ele)
-    }else{track_base <- rbind(track_base, data.frame(lat = lat, lon = lon, ele = ele))}
+    if( (max(lon)<2.25) & (min(lon)>2) & (max(lat)<41.5) & (min(lat)>41.35) & (max(ele)<700) & (min(ele)>100)){
+      if(!exists("track_base")){track_base <- data.frame(lat = lat, lon = lon, ele = ele)
+      }else{track_base <- rbind(track_base, data.frame(lat = lat, lon = lon, ele = ele))}    
+    }
+  
   }
 }
 
@@ -49,6 +53,12 @@ for (i in seq(10,200,10)){
 #h2 <- hist2d(data.frame(x = track_base$lon,  y = track_base$lat), nbins=2000)
 
 #zm()
-plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
-plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
-plot3d(track_base$lon, track_base$lat, 0, type='p',  col='blue', pch='.')
+plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.')
+#plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
+#plot3d(track_base$lon, track_base$lat, 0, type='p',  col='blue', pch='.')
+
+track_base <- track_base[(!is.na(track_base$lat)),]
+track_base <- track_base[(!is.na(track_base$lon)),]
+
+track_base_2 <- nearest_gpx(track_base)
+
