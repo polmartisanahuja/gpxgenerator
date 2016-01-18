@@ -7,10 +7,12 @@ library(MASS)
 library(gplots)
 library(zoom)
 
+path <- "tracks/"
+
 remove("track_base")
 
+n=1
 for (i in seq(10,200,10)){
-  print(i)
   
   wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=collserola&from=", i-10,"&to=",i))
   #wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=sant+lloren%C3%A7+del+munt&from", i-10,"&to=",i))
@@ -20,8 +22,6 @@ for (i in seq(10,200,10)){
        html_nodes("a") %>% html_attr("href") 
   
   for (j in 1:10){
-    print(j)
-    
     track <- read_html(track_link[j])
     
     a <- track %>% 
@@ -39,14 +39,30 @@ for (i in seq(10,200,10)){
     ele <- a$at$l
     lat <- a$at$a
     
+    
+    
     #print(length(lon))
     if( (max(lon)<2.25) & (min(lon)>2) & (max(lat)<41.5) & (min(lat)>41.35) & (max(ele)<700) & (min(ele)>100)){
-      if(!exists("track_base")){track_base <- data.frame(lat = lat, lon = lon, ele = ele)
-      }else{track_base <- rbind(track_base, data.frame(lat = lat, lon = lon, ele = ele))}    
+      id <- rep(n, length(lat))
+      
+      print(n)
+      
+      track <- data.frame(id = id, lat = lat, lon = lon)
+      delta_x1 <- delta_dist(track1)
+      h <- hist((delta_x1), n = 1000, plot = F)
+      factor <- h$mids[which(max(h$counts)==h$counts)] / step 
+      track <- interpol_track(track, round(nrow(track)*factor, digits=0))  
+      
+      if(!exists("track_base")){track_base <- track
+      }else{track_base <- rbind(track_base, track)}    
+      
+    n=n+1
+    
     }
-  
   }
 }
+
+write.csv(track_base, paste0(path, "collserola_scrap.csv"), row.names = F)
 
 #plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.')
 #plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue')
@@ -57,8 +73,8 @@ plot(track_base$lon, track_base$lat, type='p',  col='blue', pch='.')
 #plot3d(track_base$lon, track_base$lat, track_base$ele, type='p',  col='blue', pch='.', ylim=c(41.35,41.5), xlim=c(2,2.25))
 #plot3d(track_base$lon, track_base$lat, 0, type='p',  col='blue', pch='.')
 
-track_base <- track_base[(!is.na(track_base$lat)),]
-track_base <- track_base[(!is.na(track_base$lon)),]
+#track_base <- track_base[(!is.na(track_base$lat)),]
+#track_base <- track_base[(!is.na(track_base$lon)),]
 
-track_base_2 <- nearest_gpx(track_base)
+#track_base_2 <- nearest_gpx(track_base)
 
