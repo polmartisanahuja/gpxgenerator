@@ -28,27 +28,27 @@ smooth_gpx <- function(track){
   return(track)
 }
 
-nearest_gpx <- function(track){
-  track$nearest <- 0 
-  delta_lat <- abs(track$lat[2:length(track$lat)]-track$lat[1:(length(track$lat)-1)])
-  delta_lon <- abs(track$lon[2:length(track$lon)]-track$lon[1:(length(track$lon)-1)])
-  step_distance <- mean(sqrt(delta_lat^2 + delta_lon^2))
-  
-  for (i in 1:length(track$lat)){
-    Dlat = track$lat[i] - track$lat[1:i]
-    Dlon = track$lon[i] - track$lon[1:i]
-    D = sqrt(Dlat^2+Dlon^2)
-    
-    id_near <- which(2*step_distance > D)
-    id_near <- id_near[abs(i-id_near)>15]
-    if(length(id_near)>0){
-      id_nearest <- id_near[which(min(D[id_near]) == D[id_near])]
-      track$nearest[i] <- id_nearest
-    }
-  }
-  
-  return(track)
-}
+ nearest_gpx <- function(track){
+   track$nearest <- 0 
+   delta_lat <- abs(track$lat[2:length(track$lat)]-track$lat[1:(length(track$lat)-1)])
+   delta_lon <- abs(track$lon[2:length(track$lon)]-track$lon[1:(length(track$lon)-1)])
+   step_distance <- mean(sqrt(delta_lat^2 + delta_lon^2))
+   
+   for (i in 1:length(track$lat)){
+     Dlat = track$lat[i] - track$lat[1:i]
+     Dlon = track$lon[i] - track$lon[1:i]
+     D = sqrt(Dlat^2+Dlon^2)
+     
+     id_near <- which(2*step_distance > D)
+     id_near <- id_near[abs(i-id_near)>15]
+     if(length(id_near)>0){
+       id_nearest <- id_near[which(min(D[id_near]) == D[id_near])]
+       track$nearest[i] <- id_nearest
+     }
+   }
+   
+   return(track)
+ }
 
 find_edges <- function(id_overlap){
   id_cut <- which(abs(id_overlap[2:length(id_overlap)]-id_overlap[1:(length(id_overlap)-1)]) > 5)
