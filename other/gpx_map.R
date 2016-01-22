@@ -20,6 +20,10 @@ interpol_track <- function(track, num){
 path <- "tracks/"
 track <- read.csv(paste0(path, "collserola_scrap.csv"))
 
+for (i in 1:max(track$id)){
+  track[track$id==i,] <- smooth_gpx(track[track$id==i,]) 
+}
+
 track$nearest <- 0 
 
 delta_x <- delta_dist(track)
@@ -89,6 +93,7 @@ id_rep <- id_rep[id_rep !=0]
 id_rep <- unique(id_rep)
 
 plot(track$lon, track$lat, type='p',  col='blue', pch='.')
+zm()
 
 id_unique <- setdiff(1:nrow(track), id_rep)
 track_clean <- track[id_unique,]

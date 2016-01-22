@@ -23,7 +23,7 @@ read_gpx <- function(file){
 smooth_gpx <- function(track){
   track$lat <- SMA(track$lat)
   track$lon <- SMA(track$lon)
-  track$ele <- SMA(track$ele)
+  #track$ele <- SMA(track$ele)
   
   return(track)
 }
