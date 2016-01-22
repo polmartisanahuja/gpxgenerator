@@ -12,9 +12,9 @@ path <- "tracks/"
 remove("track_base")
 
 n=1
-for (i in seq(10,200,10)){
+for (i in seq(10,14457,10)){
   
-  wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=collserola&from=", i-10,"&to=",i))
+  wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=all&q=collserola&from=", i-10,"&to=",i))
   #wikiloc <- read_html(paste0("http://es.wikiloc.com/wikiloc/find.do?act=1%2C&q=sant+lloren%C3%A7+del+munt&from", i-10,"&to=",i))
   
   track_link <- wikiloc %>% 
@@ -23,6 +23,7 @@ for (i in seq(10,200,10)){
   
   for (j in 1:10){
     track <- read_html(track_link[j])
+    
     
     a <- track %>% 
       html_nodes("div") %>%
@@ -42,23 +43,24 @@ for (i in seq(10,200,10)){
     
     
     #print(length(lon))
-    if( (max(lon)<2.25) & (min(lon)>2) & (max(lat)<41.5) & (min(lat)>41.35) & (max(ele)<700) & (min(ele)>100)){
+    #if( (max(lon)<2.2) & (min(lon)>2) & (max(lat)<41.5) & (min(lat)>41.35) & (max(ele)<700) & (min(ele)>100)){
       id <- rep(n, length(lat))
       
       print(n)
       
-      track <- data.frame(id = id, lat = lat, lon = lon)
-      delta_x1 <- delta_dist(track1)
-      h <- hist((delta_x1), n = 1000, plot = F)
-      factor <- h$mids[which(max(h$counts)==h$counts)] / step 
-      track <- interpol_track(track, round(nrow(track)*factor, digits=0))  
       
-      if(!exists("track_base")){track_base <- track
-      }else{track_base <- rbind(track_base, track)}    
+      tr <- data.frame(id = id, lat = lat, lon = lon)
+      #delta_x1 <- delta_dist(track1)
+      #h <- hist((delta_x1), n = 1000, plot = F)
+      #factor <- h$mids[which(max(h$counts)==h$counts)] / step 
+      #track <- interpol_track(track, round(nrow(track)*factor, digits=0))  
+      
+      if(!exists("track_base")){track_base <- tr
+      }else{track_base <- rbind(track_base, tr)}    
       
     n=n+1
     
-    }
+    #}
   }
 }
 
