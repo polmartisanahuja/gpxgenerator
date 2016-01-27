@@ -91,34 +91,74 @@ for(i in 1:3){
 }
 
 ###### Plot kde map ###### 
-track <- crop(track, c(2.11,2.15), c(41.425, 41.43))
+lat_lim <- c(41.41, 41.425)
+lon_lim <- c(2.09,2.11)
+
+track <- crop(track, lon_lim , lat_lim )
+track$id <- NULL
+
+plot(track$lon, track$lat, type='p',  col='blue', pch='.')
+
 x=track$lon
 y=track$lat
 z <- kde2d(x,y, h=c(0.0001,0.0001), n=500)
-image(z)
+#image(z)
 filled.contour(z, color = terrain.colors, nlevels = 100)
 
-track$id <- NULL
 
-track_matrix <- as.matrix(track_small)
-fit <- principal.curve(track_matrix)
+#track_matrix <- as.matrix(track)
+#fit <- principal.curve(track_matrix)
 
-fit <- lpc(track_small, h=0.0001, x0=1, depth=1, way="one",  scaled=F, control=lpc.control(iter=100))
-plot(fit, curvecol = 1)
+#fit <- lpc(track, h=0.0001, x0=1, depth=1, way="one",  scaled=F, control=lpc.control(iter=100))
+# for (i in 1:50){
+# fit <- lpc(track, h=0.0001, scaled=F)
+# lines(fit$LPC[,2], fit$LPC[,1], col='red', lwd = 3)
+# }
 
+N <- 50
+lon_bins <- seq(lon_lim[1],lon_lim[2],(lon_lim[2]-lon_lim[1])/N)
+lat_bins <- seq(lat_lim[1],lat_lim[2],(lat_lim[2]-lat_lim[1])/N) 
+remove("starting_points")
+for(i in 1:(N-1)){
+ for(j in 1:(N-1)){
+   print(i)
+   print(j)
+   
+   track_sample <- crop(track, lon_bins[i:(i+1)] , lat_bins[j:(j+1)] )
+   
+  if(nrow(track_sample)>30){
+   if(!exists("starting_points")){ starting_points <- track_sample[sample(1:nrow(track_sample),1),1:2]
+   }else{starting_points <- rbind(starting_points, track_sample[sample(1:nrow(track_sample),1),1:2])}
+  }
+   
+ }
+}
+#starting_points_sample <- starting_points[sample(1:nrow(starting_points), 100),]
 
-data(calspeedflow)
-lpc1 <- lpc(calspeedflow[,3:4])
-lines(fit)
+plot(track$lon, track$lat, type='p',  col='blue', pch='.')
+#points(starting_points_sample$lon, starting_points_sample$lat, col='red',  type='p' , pch=19, cex=0.5)
+#points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
 
-x <- runif(100,-1,1)
-x <- cbind(x, x ^ 2 + rnorm(100, sd = 0.1))
-fit1 <- principal.curve(x, plot = TRUE)
-fit2 <- principal.curve(x, plot = TRUE, smoother = "lowess")
-lines(fit1)
-points(fit1)
-plot(fit1)
-whiskers <- function(from, to)
-  segments(from[, 1], from[, 2], to[, 1], to[, 2])
-whiskers(x, fit1$s)
+new_point <- as.numeric(starting_points[1,])
+i <- 0
+while(!is.null(new_point)){
+  print(i)
+  fit <- lpc(track, h=0.0001, scaled=F, x0 = new_point)
+  lat=fit$LPC[,1]
+  lon=fit$LPC[,2]
+  lines(lon, lat, col='red', lwd = 3)
+  
+  id_rm <- c()
+  for (j in 1:length(lat)){
+    distance <- sqrt((lat[j]-starting_points$lat)^2 + (lon[j]-starting_points$lon)^2)
+    id_rm <- c(id_rm, which(distance<0.0002))  
+  }
+  id_rm <- unique(id_rm)
+  print(id_rm)
+  
+  starting_points <- starting_points[setdiff(1:nrow(starting_points), id_rm),]
+  new_point <- as.numeric(starting_points[1,])
+  i <- i + 1
+}
 
+points(starting_points$lon[id_rm], starting_points$lat[id_rm], col='red',  type='p' , pch=19, cex=0.5)
