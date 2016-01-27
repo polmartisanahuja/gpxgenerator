@@ -10,7 +10,14 @@ library(princurve)
 
 path <- "tracks/"
 scrap_file <- "collserola_scrap.csv"
-  
+
+####### Functions #######
+crop <- function(track, lonlim, latlim){
+  track <- track[(track$lon<lonlim[2]) & (track$lon>lonlim[1]) & (track$lat<latlim[2]) & (track$lat>latlim[1]),]
+  return(track)  
+}
+
+######## Scrap Collserola Wikiloc #########
 remove("track_base")
 n=1
 for (i in seq(10,14457,10)){
@@ -50,37 +57,48 @@ for (i in seq(10,14457,10)){
     n=n+1
   }
 }
-
 write.csv(track_base, paste0(path, scrap_file), row.names = F)
 
+######## Read track database ########
 track <- read.csv(paste0(path, scrap_file))
-track <- track[(track$lon<2.2) & (track$lon>2) & (track$lat<41.5) & (track$lat>41.35),]
 
+####### Scatter Plot whole map ########
+track <- crop(track, c(2,2.2), c(41.35, 41.5))
 plot(track$lon, track$lat, type='p',  col='blue', pch='.')
 zm()
 
-h <- hist2d(track$lon, track$lat, nbins=3000)
-image(h$x.breaks, h$y.breaks, log10(h$counts))
-zm()
+############## KDE for the whole  map ###############
+lon_bins <- seq(2,2.2,(2.2-2)/3)
+lat_bins <- seq(41.35,41.5,(41.5-41.35)/3)
 
+for(i in 1:3){
+  for(j in 1:3){
+    print(i)
+    print(j)
+    track_small <- crop(track, c(lon_bins[i],lon_bins[i+1]), c(lat_bins[j], lat_bins[j+1]))
+    
+    x=track_small$lon
+    y=track_small$lat
+    
+    z <- kde2d(x,y, n=500, h=c(0.0001,0.0001))
+    z$z[z$z<1] <- 1
+    
+    png(paste0(path, "png_map_", i, "_",j), width = 1000, height = 1000)
+    filled.contour(z$x, z$y, log10(z$z), color = terrain.colors, nlevels = 100)
+    dev.off()
+    rm(z)
+  }
+}
+
+###### Plot kde map ###### 
+track <- crop(track, c(2.11,2.15), c(41.425, 41.43))
 x=track$lon
 y=track$lat
-
 z <- kde2d(x,y, h=c(0.0001,0.0001), n=500)
-
-
-
-track_small <- track[(track$lon<2.15) & (track$lon>2.11) & (track$lat<41.43) & (track$lat>41.425),]
-plot(track_small$lon, track_small$lat, type='p',  col='blue', pch='.')
-
-track_small$id <- NULL
-
-
-x=track_small$lon
-y=track_small$lat
-z <- kde2d(x,y, h=c(0.0001,0.0001), n=100)
 image(z)
 filled.contour(z, color = terrain.colors, nlevels = 100)
+
+track$id <- NULL
 
 track_matrix <- as.matrix(track_small)
 fit <- principal.curve(track_matrix)
@@ -104,25 +122,3 @@ whiskers <- function(from, to)
   segments(from[, 1], from[, 2], to[, 1], to[, 2])
 whiskers(x, fit1$s)
 
-############## KDE for the whole  map ###############
-lon_bins <- seq(2,2.2,(2.2-2)/3)
-lat_bins <- seq(41.35,41.5,(41.5-41.35)/3)
-
-for(i in 1:3){
-  for(j in 1:3){
-    print(i)
-    print(j)
-    track_small <- track[(track$lon<lon_bins[i+1]) & (track$lon>lon_bins[i]) & (track$lat<lat_bins[j+1]) & (track$lat>lat_bins[j]),]
-    
-    x=track_small$lon
-    y=track_small$lat
-    
-    z <- kde2d(x,y, n=500, h=c(0.0001,0.0001))
-    z$z[z$z<1] <- 1
-    
-    png(paste0(path, "png_map_", i, "_",j), width = 1000, height = 1000)
-    filled.contour(z$x, z$y, log10(z$z), color = terrain.colors, nlevels = 100)
-    dev.off()
-    rm(z)
-  }
-}
