@@ -32,14 +32,15 @@ smooth_gpx <- function(track){
    track$nearest <- 0 
    delta_lat <- abs(track$lat[2:length(track$lat)]-track$lat[1:(length(track$lat)-1)])
    delta_lon <- abs(track$lon[2:length(track$lon)]-track$lon[1:(length(track$lon)-1)])
-   step_distance <- mean(sqrt(delta_lat^2 + delta_lon^2))
+   #step_distance <- mean(sqrt(delta_lat^2 + delta_lon^2))
+   step_distance <- 0.0001
    
    for (i in 1:length(track$lat)){
      Dlat = track$lat[i] - track$lat[1:i]
      Dlon = track$lon[i] - track$lon[1:i]
      D = sqrt(Dlat^2+Dlon^2)
      
-     id_near <- which(2*step_distance > D)
+     id_near <- which(step_distance > D)
      id_near <- id_near[abs(i-id_near)>15]
      if(length(id_near)>0){
        id_nearest <- id_near[which(min(D[id_near]) == D[id_near])]
@@ -67,24 +68,25 @@ edges <- function(track){
   track_overlap <- track[track$nearest != 0,]
   edges <- rbind(find_edges(track[track$nearest != 0,]$nearest), find_edges(as.numeric(rownames(track_overlap))))
   edges <- edges[order(edges$min),]
+  edges_clean <- edges
   
-  m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20 
-  m <- c(m,TRUE)
-  m_false <- which(m)
-  m_true <- which(!m)
+  #m <- edges$min[2:nrow(edges)] - edges$max[1:(nrow(edges)-1)] > 20 
+  #m <- c(m,TRUE)
+  #m_false <- which(m)
+  #m_true <- which(!m)
   
-  if(nrow(edges)>2){
-    edges[m_true+1,]$min <- edges[m_true,]$min
-    edges_clean <- edges[m,]
-    #edges_clean[which(!m),]$min <- min_edges
-  }else{
-    if(!m){
-      edges_clean <- edges[2,]
-      edges_clean[1,]$min<- edges[1,]$min
-    }else{
-      edges_clean <- edges[2,]
-    }
-  }
+#   if(nrow(edges)>2){
+#     edges[m_true+1,]$min <- edges[m_true,]$min
+#     edges_clean <- edges[m,]
+#     #edges_clean[which(!m),]$min <- min_edges
+#   }else{
+#     if((!m)[1]){
+#       edges_clean <- edges[2,]
+#       edges_clean[1,]$min<- edges[1,]$min
+#     }else{
+#       edges_clean <- edges[2,]
+#     }
+#   }
   
   rownames(edges_clean) <- 1:nrow(edges_clean)
   
@@ -121,13 +123,18 @@ edges_reduce <- function(edges_clean, track){
 }
 
 track_split <- function(track, df_edges){
-  df_list <- list()
+#  df_list <- list()
+#   for (i in 1:nrow(df_edges)){
+#     id_points <- df_edges$min[i]:df_edges$max[i]
+#     df_list[[i]] <-  data.frame(lon = track$lon[id_points], lat = track$lat[id_points],  id_track=i)
+#   }
   for (i in 1:nrow(df_edges)){
-    id_points <- df_edges$min[i]:df_edges$max[i]
-    df_list[[i]] <-  data.frame(lon = track$lon[id_points], lat = track$lat[id_points], ele = track$ele[id_points],  id_track=i)
-  }
+     id_points <- df_edges$min[i]:df_edges$max[i]
+     if(i==1) df <- data.frame(lon = track$lon[id_points], lat = track$lat[id_points],  id_track=i)
+     else df <- rbind(df, data.frame(lon = track$lon[id_points], lat = track$lat[id_points],  id_track=i)) 
+   }  
   
-  return(df_list)
+  return(df)
 }
 
 split_gpx <- function(track){
