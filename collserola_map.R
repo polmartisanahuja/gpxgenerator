@@ -105,23 +105,6 @@ lon_lim <- c(2.09,2.11)
 track <- crop(track, lon_lim , lat_lim )
 track$id <- NULL
 
-#plot(track$lon, track$lat, type='p',  col='blue', pch='.')
-
-#x=track$lon
-#y=track$lat
-#z <- kde2d(x,y, h=c(0.0001,0.0001), n=500)
-#image(z)
-#filled.contour(z, color = terrain.colors, nlevels = 100)
-
-#track_matrix <- as.matrix(track)
-#fit <- principal.curve(track_matrix)
-
-#fit <- lpc(track, h=0.0001, x0=1, depth=1, way="one",  scaled=F, control=lpc.control(iter=100))
-# for (i in 1:50){
-# fit <- lpc(track, h=0.0001, scaled=F)
-# lines(fit$LPC[,2], fit$LPC[,1], col='red', lwd = 3)
-# }
-
 N <- 50
 lon_bins <- seq(lon_lim[1],lon_lim[2],(lon_lim[2]-lon_lim[1])/N)
 lat_bins <- seq(lat_lim[1],lat_lim[2],(lat_lim[2]-lat_lim[1])/N) 
@@ -139,13 +122,13 @@ for(i in 1:(N-1)){
   }
  }
 }
-#starting_points_sample <- starting_points[sample(1:nrow(starting_points), 100),]
-
-plot(track$lon, track$lat, type='p',  col='black', pch='.')
-#points(starting_points_sample$lon, starting_points_sample$lat, col='red',  type='p' , pch=19, cex=0.5)
-#points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
 
 colors <- palette()[2:length(palette())]
+
+plot(track$lon, track$lat, type='p',  col='black', pch='.')
+#starting_points_sample <- starting_points[sample(1:nrow(starting_points), 100),]
+#points(starting_points_sample$lon, starting_points_sample$lat, col='red',  type='p' , pch=19, cex=0.5)
+#points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
 
 new_point <- as.numeric(starting_points[1,])
 i <- 0
@@ -154,7 +137,7 @@ while(!is.null(new_point)){
   fit <- lpc(track, h=0.0001, scaled=F, x0 = new_point)
   lat=fit$LPC[,1]
   lon=fit$LPC[,2]
-  lines(lon, lat, col=colors[i%%length(palette())+1], lwd = 3)
+  lines(lon, lat, col=colors[i%%length(colors)+1], lwd = 3)
   
   if(i==0){track_fit <- data.frame(lat = lat, lon = lon, id = i)
   }else{track_fit <- rbind(track_fit, data.frame(lat = lat, lon = lon, id = i))}
@@ -171,87 +154,127 @@ while(!is.null(new_point)){
   new_point <- as.numeric(starting_points[1,])
   i <- i + 1
 }
+write.csv(track_fit, paste0(path, "track_fit.csv"), row.names = F)
 
 #points(starting_points$lon[id_rm], starting_points$lat[id_rm], col='red',  type='p' , pch=19, cex=0.5)
 
-for (i in 1:max(track_fit$id)){
-  if(i==1){plot(track_fit$lon[track_fit$id==i], track_fit$lat[track_fit$id==i], type='l', col=colors[i%%length(palette())+1], lwd = 3,
-                xlim = c(min(track_fit$lon),max(track_fit$lon)), ylim = c(min(track_fit$lat),max(track_fit$lat)))
-  }else{lines(track_fit$lon[track_fit$id==i], track_fit$lat[track_fit$id==i], col=colors[i%%length(palette())+1], lwd = 3)}
+########### Separate paths ############
+library(rgl)
+source("functions.R")
+
+track <- read.csv(paste0(path, "track_fit.csv"))
+
+track <- track[track$id==0,]
+
+
+ for (i in 0:max(track$id)){
+   if(i==0){plot(track$lon[track$id==i], track$lat[track$id==i], type='l', col=colors[i%%length(palette())+1], lwd = 3, 
+                 xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)))
+   }else{lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%length(palette())+1], lwd = 3)}
+ }
+
+track <- nearest_gpx(track)
+edges_clean <- edges(track)
+
+plot(track$lon[1:138], track$lat[1:138], type='p', pch='.')
+points(track$lon[138:199], track$lat[138:199], pch='.', col ='red')
+
+#track$nearest <- 0 
+
+#delta_x <- delta_dist(track)
+
+#hist(log10(delta_x[delta_x<0.01]), n = 1000)
+#step <- mean(delta_x)
+#step <- 0.001
+
+
+
+#track <- smooth_gpx(track)
+#track <- track[(!is.na(track$lat)),]
+
+#points(track$lon, track$lat,  col='blue')
+#lines3d(track$lon, track$lat, track$ele,  col='yellow')
+#points3d(track$lon, track$lat, track$ele,  col='yellow')
+
+rownames(track) <- 1:nrow(track)
+
+track_list <- split_gpx(track)
+#track_list <- remove_short(track_list)
+
+for (i in 0:max(track_list$id)){
+  if(i==0){plot(track_list$lon[track_list$id==i], track_list$lat[track_list$id==i], type='l', col=colors[i%%length(palette())+1], lwd = 3,
+                xlim = c(min(track_list$lon),max(track_list$lon)), ylim = c(min(track_list$lat),max(track_list$lat)))
+  }else{lines(track_list$lon[track_list$id==i], track_list$lat[track_list$id==i], col=colors[i%%length(palette())+1], lwd = 3)}
 }
 
-track <- track_fit
+track <- track[track$id==1,]
 
-track$nearest <- 0 
+#plot_gpx(track_list, track)
 
-delta_x <- delta_dist(track)
-
-hist(log10(delta_x[delta_x<0.01]), n = 1000)
-step <- mean(delta_x)
-
-  for (i in 1:length(track$lat)){
-    print(i)
-    Dlat = track$lat[i] - track$lat[1:i]
-    Dlon = track$lon[i] - track$lon[1:i]
-    D = sqrt(Dlat^2+Dlon^2)
-    
-    id_near <- which(step > D)
-    id_near <- id_near[abs(i-id_near)>15]
-    
-    if(length(id_near)>0){
-      index_split <-  which(id_near[2:length(id_near)] - id_near[1:(length(id_near)-1)]>15)
-    
-      if(length(index_split)>0){
-        id_near_list <- list()
-      
-        for (j in 1:length(index_split)){
-          if(j==1) id_near_list[[j]] <- id_near[1:index_split[j]]    
-          else id_near_list[[j]] <- id_near[(index_split[j-1]+1):index_split[j]]      
-        }
-    
-        id_nearest <- c()
-        for (j in 1:length(index_split)){
-          id_near <- id_near_list[[j]]
-          id_nearest <- c(id_nearest, id_near[which(min(D[id_near]) == D[id_near])])
-        }
-        track$nearest[i] <- paste(id_nearest, collapse = ',')
-        
-      }else{
-          id_nearest <-  id_near[which(min(D[id_near]) == D[id_near])]
-          track$nearest[i] <- paste(id_nearest, collapse = ',')
-      }
-      
-    }else{
-      track$nearest[i] <- '0'
-    }
-    
-  }
-
-
-id_rep <- paste(track$nearest, collapse=',')
-
-id_rep <- as.numeric(unlist(strsplit(id_rep, split=",")))
-id_rep <- id_rep[id_rep !=0]
-id_rep <- unique(id_rep)
-
-
-id_unique <- setdiff(1:nrow(track), id_rep)
-track_clean <- track[id_unique,]
-
-zm()
-plot(track$lon, track$lat, type='p',  col='red', pch='.')
-points(track_clean$lon, track_clean$lat,  col='blue', pch='.')
-plot(track_clean$lon, track_clean$lat, type='p',  col='blue', pch='.')
-
-for (i in 1:max(track_clean$id)){
-  if(i==1){plot(track_clean$lon[track_clean$id==i], track_clean$lat[track_clean$id==i], type='l', col=colors[i%%length(palette())+1], lwd = 3,
-                xlim = c(min(track_clean$lon),max(track_clean$lon)), ylim = c(min(track_clean$lat),max(track_clean$lat)))
-  }else{lines(track_clean$lon[track_clean$id==i], track_clean$lat[track_clean$id==i], col=colors[i%%length(palette())+1], lwd = 3)}
-}
-
-rname <- as.numeric(rownames(track_clean))
-id_split <- which(rname[2:length(rname)]-rname[1:(length(rname)-1)]>10)
-for (i in 1:(length(id_split)-1)){
-  if(i==1) track_clean$id[1:(id_split[2]-1)] <- 1
-  else track_clean$id[(id_split[i]+1):id_split[i+1]] <- i  
-}
+# for (i in 1:length(track$lat)){
+#   print(i)
+#   Dlat = track$lat[i] - track$lat[1:i]
+#   Dlon = track$lon[i] - track$lon[1:i]
+#   D = sqrt(Dlat^2+Dlon^2)
+#     
+#   id_near <- which(step > D)
+#   id_near <- id_near[abs(i-id_near)>5]
+#     
+#   if(length(id_near)>0){
+#     index_split <-  which(id_near[2:length(id_near)] - id_near[1:(length(id_near)-1)]>15)
+#     
+#     if(length(index_split)>0){
+#       id_near_list <- list()
+#       
+#       for (j in 1:length(index_split)){
+#         if(j==1) id_near_list[[j]] <- id_near[1:index_split[j]]    
+#         else id_near_list[[j]] <- id_near[(index_split[j-1]+1):index_split[j]]      
+#       }
+#     
+#       id_nearest <- c()
+#       for (j in 1:length(index_split)){
+#         id_near <- id_near_list[[j]]
+#         id_nearest <- c(id_nearest, id_near[which(min(D[id_near]) == D[id_near])])
+#       }
+#       track$nearest[i] <- paste(id_nearest, collapse = ',')
+#       
+#     }else{
+#         id_nearest <-  id_near[which(min(D[id_near]) == D[id_near])]
+#         track$nearest[i] <- paste(id_nearest, collapse = ',')
+#     }
+#     
+#   }else{
+#     track$nearest[i] <- '0'
+#   }
+#   
+# }
+# 
+# 
+# id_rep <- paste(track$nearest, collapse=',')
+# id_rep <- as.numeric(unlist(strsplit(id_rep, split=",")))
+# id_rep <- id_rep[id_rep !=0]
+# id_rep <- unique(id_rep)
+# 
+# id_unique <- setdiff(1:nrow(track), id_rep)
+# track_clean <- track[id_unique,]
+# 
+# plot(track$lon, track$lat, type='p',  col='red', pch='.')
+# points(track_clean$lon, track_clean$lat,  col='blue', pch='.')
+# points(track$lon[199], track$lat[199],  col='blue', pch='.')
+# plot(track_clean$lon, track_clean$lat, type='p',  col='blue', pch='.')
+# zm()
+# 
+# for (i in 0:max(track_clean$id)){
+#   if(i==0){plot(track_clean$lon[track_clean$id==i], track_clean$lat[track_clean$id==i], type='l', col=colors[i%%length(palette())+1], lwd = 3,
+#                 xlim = c(min(track_clean$lon),max(track_clean$lon)), ylim = c(min(track_clean$lat),max(track_clean$lat)))
+#   }else{lines(track_clean$lon[track_clean$id==i], track_clean$lat[track_clean$id==i], col=colors[i%%length(palette())+1], lwd = 3)}
+# }
+# 
+# rname <- as.numeric(rownames(track_clean))
+# id_split1 <- which((track_clean$id[2:length(track_clean$id)]-track_clean$id[1:(length(track_clean$id)-1)])>0)
+# id_split2 <- which(rname[2:length(rname)]-rname[1:(length(rname)-1)]>10)
+# id_split <- sort(unique(c(id_split1, id_split2)))
+# for (i in 1:(length(id_split)-1)){
+#   if(i==1) track_clean$id[1:(id_split[2]-1)] <- 1
+#   else track_clean$id[(id_split[i]+1):id_split[i+1]] <- i  
+# }
