@@ -159,17 +159,24 @@ write.csv(track_fit, paste0(path, "track_fit.csv"), row.names = F)
 #points(starting_points$lon[id_rm], starting_points$lat[id_rm], col='red',  type='p' , pch=19, cex=0.5)
 
 ####### Clean acumulation of points #######
-track_all <- read.csv(paste0(path, "track_fit.csv"))
+track_raw <- read.csv(paste0(path, "track_fit.csv"))
+
+#Interpolation
+for (i in 0:max(track_raw$id)){
+  num <- nrow(track_raw[track_raw$id==i,])
+  if(i==0) track_all <- data.frame(lon = approx(track_raw[track_raw$id==i,]$lon, n=10*num)$y, lat = approx(track_raw[track_raw$id==i,]$lat, n=10*num)$y, id = i)
+  else track_all <- rbind(track_all, data.frame(lon = approx(track_raw[track_raw$id==i,]$lon, n=10*num)$y, lat = approx(track_raw[track_raw$id==i,]$lat, n=10*num)$y, id = i))
+} 
 
 delta_lat <- abs(track_all$lat[1:(length(track_all$lat)-1)]-track_all$lat[2:length(track_all$lat)])
 delta_lon <- abs(track_all$lon[1:(length(track_all$lon)-1)]-track_all$lon[2:length(track_all$lon)])
 delta <- sqrt(delta_lat^2 + delta_lon^2)
 hist(log10(delta), breaks=100)
-mask <- delta>0.00005
+mask <- delta>0.000005
 track <- track_all[mask,]
 
 ####### Clean overlaps ######
-step <- 0.0001
+step <- 0.00005
 track$nearest <- 0 
 for (i in 1:length(track$lat)){
   print(i)
@@ -219,7 +226,7 @@ delta_lon <- abs(track$lon[1:(length(track$lon)-1)]-track$lon[2:length(track$lon
 delta <- sqrt(delta_lat^2 + delta_lon^2)
 #hist(log10(delta), breaks=100)
 
-id_split <- which(delta > 0.0002)
+id_split <- which(delta > 0.0001)
 
 track$id[1:(id_split[2]-1)] <- 1
 for (i in 2:(length(id_split)-1)){
