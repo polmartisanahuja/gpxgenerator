@@ -5,7 +5,7 @@ library(rgl)
 # library(zoom)
 # library(gplots)
 # library(MASS)
-# library(LPCM)
+ library(LPCM)
 # library(princurve)
 #source("functions.R")
 
@@ -67,42 +67,39 @@ for (i in seq(10,14457,10)){
 }
 write.csv(track_base, paste0(path, scrap_file), row.names = F)
 
-######## Read track database ########
+###### Crop scatter map ###### 
 track <- read.csv(paste0(path, scrap_file))
 
-####### Scatter Plot whole map ########
-track <- crop(track, c(2,2.2), c(41.35, 41.5))
-plot(track$lon, track$lat, type='p',  col='blue', pch='.')
-zm()
-
-############## KDE for the whole  map ###############
-lon_bins <- seq(2,2.2,(2.2-2)/3)
-lat_bins <- seq(41.35,41.5,(41.5-41.35)/3)
-
-for(i in 1:3){
-  for(j in 1:3){
-    print(i)
-    print(j)
-    track_small <- crop(track, c(lon_bins[i],lon_bins[i+1]), c(lat_bins[j], lat_bins[j+1]))
-    
-    x=track_small$lon
-    y=track_small$lat
-    
-    z <- kde2d(x,y, n=500, h=c(0.0001,0.0001))
-    z$z[z$z<1] <- 1
-    
-    png(paste0(path, "png_map_", i, "_",j), width = 1000, height = 1000)
-    filled.contour(z$x, z$y, log10(z$z), color = terrain.colors, nlevels = 100)
-    dev.off()
-    rm(z)
-  }
-}
-
-###### Find paths ###### 
 lat_lim <- c(41.41, 41.425)
 lon_lim <- c(2.09,2.11)
 
 track <- crop(track, lon_lim , lat_lim )
+
+plot(track$lon, track$lat, type='p',  col='black', pch='.')
+
+##### Clean scatter map ######
+track$density <- 0
+
+circus <- 0.00001
+
+for (i in 1:nrow(track)){
+  print(i)
+  track$density[i] <- sum(sqrt((track$lat[i]-track$lat)^2 + (track$lon[i]-track$lon)^2)<circus)
+}
+write.csv(track, paste0(path, "collserola_scrap_density.csv"), row.names = F)
+track <- read.csv(paste0(path, "collserola_scrap_density.csv"))
+hist(track$density, breaks=1000)
+
+track_clean <- track[track$density>5,]
+
+plot(track_clean$lon, track_clean$lat, type='p',  col='black', pch='.')
+
+track_clean$density <- NULL
+write.csv(track_clean, paste0(path, "collserola_scrap_clean.csv"), row.names = F)
+
+##### Fill seeds #####
+track <- read.csv(paste0(path, "collserola_scrap_clean.csv"))
+
 track$id <- NULL
 
 N <- 50
@@ -116,7 +113,7 @@ for(i in 1:(N-1)){
    
    track_sample <- crop(track, lon_bins[i:(i+1)] , lat_bins[j:(j+1)] )
    
-  if(nrow(track_sample)>30){
+  if(nrow(track_sample)>5){
    if(!exists("starting_points")){ starting_points <- track_sample[sample(1:nrow(track_sample),1),1:2]
    }else{starting_points <- rbind(starting_points, track_sample[sample(1:nrow(track_sample),1),1:2])}
   }
@@ -124,11 +121,7 @@ for(i in 1:(N-1)){
 }
 
 colors <- palette()[2:length(palette())]
-
-plot(track$lon, track$lat, type='p',  col='black', pch='.')
-#starting_points_sample <- starting_points[sample(1:nrow(starting_points), 100),]
-#points(starting_points_sample$lon, starting_points_sample$lat, col='red',  type='p' , pch=19, cex=0.5)
-#points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
+points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
 
 new_point <- as.numeric(starting_points[1,])
 i <- 0
@@ -156,8 +149,6 @@ while(!is.null(new_point)){
 }
 write.csv(track_fit, paste0(path, "track_fit.csv"), row.names = F)
 
-#points(starting_points$lon[id_rm], starting_points$lat[id_rm], col='red',  type='p' , pch=19, cex=0.5)
-
 ####### Clean acumulation of points #######
 track_raw <- read.csv(paste0(path, "track_fit.csv"))
 
@@ -172,7 +163,7 @@ delta_lat <- abs(track_all$lat[1:(length(track_all$lat)-1)]-track_all$lat[2:leng
 delta_lon <- abs(track_all$lon[1:(length(track_all$lon)-1)]-track_all$lon[2:length(track_all$lon)])
 delta <- sqrt(delta_lat^2 + delta_lon^2)
 hist(log10(delta), breaks=100)
-mask <- delta>0.000005
+mask <- delta>0.000001
 track <- track_all[mask,]
 
 ####### Clean overlaps ######
@@ -238,4 +229,25 @@ for (i in 0:(max(track$id)-1)){
  if(i==0){plot(track$lon[track$id==i], track$lat[track$id==i], type='l', col=colors[i%%(length(palette())-1)+1], pch='.',
                xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)))
  }else{lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')}
+}
+
+####### Clean small tracks ######
+delta_lat <- abs(track$lat[1:(length(track$lat)-1)]-track$lat[2:length(track$lat)])
+delta_lon <- abs(track$lon[1:(length(track$lon)-1)]-track$lon[2:length(track$lon)])
+delta <- sqrt(delta_lat^2 + delta_lon^2)
+
+track_dist <- c()
+for (i in 1:max(track$id)){
+  mask <- which(track$id == i)
+  mask <- mask[1:(length(mask)-1)]
+  track_dist <- c(track_dist, sum(delta[mask]))
+}
+hist(track_dist, breaks=100)
+
+mask <- track$id %in% which(track_dist > 0.0005)
+track2 <- track[mask,]
+for (i in unique(track2$id)){
+ if(i==1){plot(track2$lon[track2$id==i], track2$lat[track2$id==i], type='l', col=colors[i%%(length(palette())-1)+1], pch='.',
+               xlim = c(min(track2$lon),max(track2$lon)), ylim = c(min(track2$lat),max(track2$lat)))
+ }else{lines(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')}
 }
