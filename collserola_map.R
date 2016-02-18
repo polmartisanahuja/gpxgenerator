@@ -2,15 +2,16 @@
 # library("RJSONIO")
 # library("TTR")
 library(rgl)
-# library(zoom)
+library(zoom)
 # library(gplots)
 # library(MASS)
- library(LPCM)
+library(LPCM)
 # library(princurve)
 #source("functions.R")
 
 path <- "tracks/"
 scrap_file <- "collserola_scrap.csv"
+colors <- palette()[2:length(palette())]
 
 ####### Functions #######
 crop <- function(track, lonlim, latlim){
@@ -120,7 +121,6 @@ for(i in 1:(N-1)){
  }
 }
 
-colors <- palette()[2:length(palette())]
 points(starting_points$lon, starting_points$lat, col='red',  type='p' , pch=19, cex=0.5)
 
 new_point <- as.numeric(starting_points[1,])
@@ -225,11 +225,12 @@ for (i in 2:(length(id_split)-1)){
 }
 track$id[(id_split[i+1]+1):nrow(track)] <- i+1 
 
-for (i in 0:(max(track$id)-1)){
- if(i==0){plot(track$lon[track$id==i], track$lat[track$id==i], type='l', col=colors[i%%(length(palette())-1)+1], pch='.',
-               xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)))
- }else{lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')}
-}
+# for (i in 0:max(track$id)){
+#  if(i==0){plot(track$lon[track$id==i], track$lat[track$id==i], type='l', col=colors[i%%(length(palette())-1)+1], pch='.',
+#                xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)))
+#  }else{lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')}
+# }
+
 
 ####### Clean small tracks ######
 delta_lat <- abs(track$lat[1:(length(track$lat)-1)]-track$lat[2:length(track$lat)])
@@ -242,12 +243,50 @@ for (i in 1:max(track$id)){
   mask <- mask[1:(length(mask)-1)]
   track_dist <- c(track_dist, sum(delta[mask]))
 }
-hist(track_dist, breaks=100)
+hist(log10(track_dist), breaks=100)
 
-mask <- track$id %in% which(track_dist > 0.0005)
+mask <- track$id %in% which(track_dist > 0.000316)
 track2 <- track[mask,]
-for (i in unique(track2$id)){
- if(i==1){plot(track2$lon[track2$id==i], track2$lat[track2$id==i], type='l', col=colors[i%%(length(palette())-1)+1], pch='.',
-               xlim = c(min(track2$lon),max(track2$lon)), ylim = c(min(track2$lat),max(track2$lat)))
- }else{lines(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')}
+
+#Plot
+track_original <- read.csv(paste0(path, scrap_file))
+
+lat_lim <- c(41.41, 41.425)
+lon_lim <- c(2.09,2.11)
+
+track_original <- crop(track_original, lon_lim , lat_lim )
+
+plot(track_original$lon, track_original$lat, type='p',  col='black', pch='.')
+for (i in 1:max(track2$id)){
+ #lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
+ lines(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
+ #points(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')
 }
+zm()
+
+##### Split tracks #####
+track <- track2
+
+
+step <- 0.0005
+track$cross <- 0 
+
+for (i in unique(track$id)){
+  t <- track[(track$id == i),c(1,2)]
+  edges <- t[c(1,nrow(t)),]
+  for(j in c(1,2)){
+    Dlat = edges$lat[j] - track$lat
+    Dlon = edges$lon[j] - track$lon
+    D = sqrt(Dlat^2+Dlon^2)
+    
+    id_near <- which((step > D) & (track$id != i) )
+    if(length(id_near)>0){
+      id <- id_near[(min(D[id_near]) == D[id_near])]
+      track$cross[id] <- i
+    }
+  }
+}
+
+track[track$cross>0,]
+
+
