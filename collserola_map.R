@@ -245,27 +245,84 @@ for (i in 1:max(track$id)){
 }
 hist(log10(track_dist), breaks=100)
 
-mask <- track$id %in% which(track_dist > 0.000316)
-track2 <- track[mask,]
+mask <- track$id %in% setdiff(which(track_dist > 0.000316), as.numeric(names(which(table(track$id) == 1))))
+track <- track[mask,]
 
-#Plot
-track_original <- read.csv(paste0(path, scrap_file))
+write.csv(track, paste0(path, "tracks_v1.csv"), row.names = F)
 
-lat_lim <- c(41.41, 41.425)
-lon_lim <- c(2.09,2.11)
+##### Join tracks #####
+track <- read.csv(paste0(path, "tracks_v1.csv"))
 
-track_original <- crop(track_original, lon_lim , lat_lim )
+step <- 0.0005
+track$cross <- 0 
 
-plot(track_original$lon, track_original$lat, type='p',  col='black', pch='.')
-for (i in 1:max(track2$id)){
- #lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
- lines(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
- #points(track2$lon[track2$id==i], track2$lat[track2$id==i], col=colors[i%%(length(palette())-1)+1], pch='.')
+for (i in unique(track$id)){
+  t <- track[(track$id == i),c(1,2)]
+  edges <- t[c(1,nrow(t)),]
+  for(j in c(1,2)){
+    Dlat = edges$lat[j] - track$lat
+    Dlon = edges$lon[j] - track$lon
+    D = sqrt(Dlat^2+Dlon^2)
+    
+    id_near <- which((step > D) & (track$id != i) )
+    if(length(id_near)>0){
+      id <- id_near[(min(D[id_near]) == D[id_near])]
+      track$cross[id] <- i
+    }
+  }
 }
-zm()
 
-##### Split tracks #####
-track <- track2
+track[track$cross>1,]
+
+id_split <- sort(c(which(track$cross>0), 
+                   which((track$id[2:length(track$id)] - track$id[1:(length(track$id)-1)])>0)))
+
+track$id[1:id_split[1]] <- 1
+for (i in 1:(length(id_split)-1)){
+  track$id[(id_split[i]+1):id_split[i+1]] <- i+1
+}
+
+for (i in 1:max(track$id)){
+ if(i==1) plot(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], type='l', lwd=2,
+               xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)) )
+ lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
+}
+
+#### Join tracks ####
+id_split <- which((track$id[2:length(track$id)] - track$id[1:(length(track$id)-1)])>0)
+id_split <- sort(c(1, id_split, id_split+1, nrow(track)))
+edges <- track[id_split,]
+rownames(edges) <- 1:nrow(edges)
+ 
+circus <- 0.0001
+for (i in 1:nrow(edges)){
+   delta_lat <- edges$lat[i]-edges$lat
+   delta_lon <- edges$lon[i]-edges$lon
+   delta <- sqrt(delta_lat^2 + delta_lon^2)    
+   #print(paste0(edges$id[i], ":" , paste0(setdiff(edges$id[which(delta < circus)], edges$id[i]), collapse=' ') ))  
+   #match <- setdiff(edges$id[which(delta < circus)], edges$id[i])
+   #match <- setdiff(edges$id[which(delta < circus)], i)
+   match <- setdiff(which(delta < circus), i)
+#    if(i==1){
+#       df <- data.frame(a=rep(edges$id[i], length(match)), b=match) 
+#    }else{
+#       df <- rbind(df, data.frame(a=rep(edges$id[i], length(match)), b=match))
+#    }
+     if(i==1){
+      df <- data.frame(id_edge=rep(i, length(match)), id_track=match) 
+   }else{
+      df <- rbind(df, data.frame(id_edge=rep(i, length(match)), id_track=match))
+   } 
+}
+
+head(df, n=100)
+
+id_edges_join <- as.numeric(names(table(df$id_edge))[table(df$id_edge)==1])
+which(id_edges_join)
+df$id_track[df$id_edge %in% id_edges_join]
+edges$id[id_edges_join]
+
+
 
 
 step <- 0.0005
@@ -287,6 +344,13 @@ for (i in unique(track$id)){
   }
 }
 
-track[track$cross>0,]
-
-
+df <- track[track$cross>0,][,c("id", "cross")]
+df <- rbind(df, data.frame(id=df$cross, cross=df$id))
+aggregate(numeric(nrow(df)), df, length)
+ 
+id_rep <-as.numeric(names(table(df$id)[table(df$id) == 1]))
+id_match <- df$id[id_rep]
+ 
+for (i in 1:length(id_rep)){
+   track[track$id==id_rep[i],]$id <- id_match[i]
+}
