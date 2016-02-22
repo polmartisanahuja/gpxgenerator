@@ -250,6 +250,8 @@ track <- track[mask,]
 
 write.csv(track, paste0(path, "tracks_v1.csv"), row.names = F)
 
+
+#######################
 ##### Join tracks #####
 track <- read.csv(paste0(path, "tracks_v1.csv"))
 
@@ -288,13 +290,18 @@ for (i in 1:max(track$id)){
  lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
 }
 
+#### Remove one point tracks ####
+count <- aggregate(track$id, by = list(track$id) , length)
+id_rm <- count[count$x==1, c(1)] 
+track <- track[track$id %in% setdiff(unique(track$id), id_rm),]
+
 #### Join tracks ####
 id_split <- which((track$id[2:length(track$id)] - track$id[1:(length(track$id)-1)])>0)
 id_split <- sort(c(1, id_split, id_split+1, nrow(track)))
 edges <- track[id_split,]
 rownames(edges) <- 1:nrow(edges)
  
-circus <- 0.0001
+circus <- 0.0003
 for (i in 1:nrow(edges)){
    delta_lat <- edges$lat[i]-edges$lat
    delta_lon <- edges$lon[i]-edges$lon
@@ -309,48 +316,28 @@ for (i in 1:nrow(edges)){
 #       df <- rbind(df, data.frame(a=rep(edges$id[i], length(match)), b=match))
 #    }
      if(i==1){
-      df <- data.frame(id_edge=rep(i, length(match)), id_track=match) 
+      df <- data.frame(id_edge=rep(i, length(match)), id_edge_match=match) 
    }else{
-      df <- rbind(df, data.frame(id_edge=rep(i, length(match)), id_track=match))
+      df <- rbind(df, data.frame(id_edge=rep(i, length(match)), id_edge_match=match))
    } 
 }
 
 head(df, n=100)
 
 id_edges_join <- as.numeric(names(table(df$id_edge))[table(df$id_edge)==1])
-which(id_edges_join)
-df$id_track[df$id_edge %in% id_edges_join]
-edges$id[id_edges_join]
+match_dictionary <- df[df$id_edge %in% id_edges_join,]
 
-
-
-
-step <- 0.0005
-track$cross <- 0 
-
-for (i in unique(track$id)){
-  t <- track[(track$id == i),c(1,2)]
-  edges <- t[c(1,nrow(t)),]
-  for(j in c(1,2)){
-    Dlat = edges$lat[j] - track$lat
-    Dlon = edges$lon[j] - track$lon
-    D = sqrt(Dlat^2+Dlon^2)
-    
-    id_near <- which((step > D) & (track$id != i) )
-    if(length(id_near)>0){
-      id <- id_near[(min(D[id_near]) == D[id_near])]
-      track$cross[id] <- i
-    }
-  }
+rm <- c()
+for (i in 1:nrow(match_dictionary)){
+  if(sum(match_dictionary$id_edge[i] == match_dictionary$id_edge_match[1:i-1]) > 0) rm <- c(rm, i)
 }
 
-df <- track[track$cross>0,][,c("id", "cross")]
-df <- rbind(df, data.frame(id=df$cross, cross=df$id))
-aggregate(numeric(nrow(df)), df, length)
- 
-id_rep <-as.numeric(names(table(df$id)[table(df$id) == 1]))
-id_match <- df$id[id_rep]
- 
-for (i in 1:length(id_rep)){
-   track[track$id==id_rep[i],]$id <- id_match[i]
+match_dictionary <- match_dictionary[setdiff(1:length(match_dictionary$id_edge), rm), ]
+id_track_match_1 <- edges[match_dictionary$id_edge,]$id
+id_track_match_2 <- edges[match_dictionary$id_edge_match,]$id
+
+for (i in length(id_track_match_1):1){
+  track$id[track$id == id_track_match_2[i]] <- id_track_match_1[i]
 }
+
+
