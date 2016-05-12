@@ -71,8 +71,11 @@ write.csv(track_base, paste0(path, scrap_file), row.names = F)
 ###### Crop scatter map ###### 
 track <- read.csv(paste0(path, scrap_file))
 
-lat_lim <- c(41.41, 41.425)
-lon_lim <- c(2.09,2.11)
+#lat_lim <- c(41.41, 41.425)
+#lon_lim <- c(2.09,2.11)
+
+lat_lim <- c(41.4, 41.43)
+lon_lim <- c(2.08,2.12)
 
 track <- crop(track, lon_lim , lat_lim )
 
@@ -81,6 +84,7 @@ plot(track$lon, track$lat, type='p',  col='black', pch='.')
 ##### Clean scatter map ######
 track$density <- 0
 
+#circus <- 0.00001
 circus <- 0.00001
 
 for (i in 1:nrow(track)){
@@ -91,7 +95,8 @@ write.csv(track, paste0(path, "collserola_scrap_density.csv"), row.names = F)
 track <- read.csv(paste0(path, "collserola_scrap_density.csv"))
 hist(track$density, breaks=1000)
 
-track_clean <- track[track$density>5,]
+#track_clean <- track[track$density>5,]
+track_clean <- track[track$density>0.5,]
 
 plot(track_clean$lon, track_clean$lat, type='p',  col='black', pch='.')
 
@@ -300,8 +305,9 @@ id_split <- which((track$id[2:length(track$id)] - track$id[1:(length(track$id)-1
 id_split <- sort(c(1, id_split, id_split+1, nrow(track)))
 edges <- track[id_split,]
 rownames(edges) <- 1:nrow(edges)
+edges$edge_type <- rep(c(1,2), nrow(edges)/2)
  
-circus <- 0.0003
+circus <- 0.0002
 for (i in 1:nrow(edges)){
    delta_lat <- edges$lat[i]-edges$lat
    delta_lon <- edges$lon[i]-edges$lon
@@ -333,11 +339,42 @@ for (i in 1:nrow(match_dictionary)){
 }
 
 match_dictionary <- match_dictionary[setdiff(1:length(match_dictionary$id_edge), rm), ]
-id_track_match_1 <- edges[match_dictionary$id_edge,]$id
-id_track_match_2 <- edges[match_dictionary$id_edge_match,]$id
+#id_track_match_1 <- edges[match_dictionary$id_edge,]$id
+id_track_match_1 <- edges[match_dictionary$id_edge, c("id", "edge_type")]
+rownames(id_track_match_1) <- 1:nrow(id_track_match_1)
+#id_track_match_2 <- edges[match_dictionary$id_edge_match,]$id
+id_track_match_2 <- edges[match_dictionary$id_edge_match, c("id", "edge_type")]
+rownames(id_track_match_2) <- 1:nrow(id_track_match_2)
 
-for (i in length(id_track_match_1):1){
-  track$id[track$id == id_track_match_2[i]] <- id_track_match_1[i]
+for (i in length(id_track_match_1$id):1){
+   if(id_track_match_2$edge_type[i] == 2 & id_track_match_1$edge_type[i] == 1){
+     new_track_1 <- track[track$id == id_track_match_1$id[i], ]
+     track <- track[!(track$id == id_track_match_1$id[i]), ]  
+     track <- rbind(track, new_track_1)
+     track$id[track$id == id_track_match_2$id[i]] <- id_track_match_1$id[i]
+   }else if(id_track_match_2$edge_type[i] == 2 & id_track_match_1$edge_type[i] == 2){
+     rnames <- rownames(track[track$id == id_track_match_1$id[i], ]) 
+     new_track_1 <- track[track$id == id_track_match_1$id[i], ][rev(rnames),]
+     track <- track[!(track$id == id_track_match_1$id[i]), ]  
+     track <- rbind(track, new_track_1)
+     track$id[track$id == id_track_match_2$id[i]] <- id_track_match_1$id[i]
+   }else if(id_track_match_2$edge_type[i] == 1 & id_track_match_1$edge_type[i] == 1){
+     new_track_1 <- track[track$id == id_track_match_1$id[i], ]
+     rnames <- rownames(track[track$id == id_track_match_2$id[i], ]) 
+     new_track_2 <- track[track$id == id_track_match_2$id[i], ][rev(rnames),]
+     track <- track[!(track$id == id_track_match_1$id[i]), ]  
+     track <- track[!(track$id == id_track_match_2$id[i]), ]  
+     track <- rbind(track, new_track_2)
+     track <- rbind(track, new_track_1)
+     track$id[track$id == id_track_match_2$id[i]] <- id_track_match_1$id[i]
+   }
+   else{
+    track$id[track$id == id_track_match_2$id[i]] <- id_track_match_1$id[i]
+   }
 }
 
-
+for (i in unique(track$id)){
+ if(i==1) plot(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], type='l', lwd=2,
+               xlim = c(min(track$lon),max(track$lon)), ylim = c(min(track$lat),max(track$lat)) )
+ lines(track$lon[track$id==i], track$lat[track$id==i], col=colors[i%%(length(palette())-1)+1], lwd=2)
+}
