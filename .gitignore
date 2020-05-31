@@ -2,4 +2,5 @@
 .RData
 .Rhistory
 tracks/collserola_scrap.csv
+tracks/collserola_scrap_v2.csv
 tracks/track_fit.csv
