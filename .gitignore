@@ -1,7 +1,7 @@
 .Rproj.user
 .RData
 .Rhistory
-tracks/collserola_scrap.csv
-tracks/collserola_scrap_v2.csv
-tracks/track_fit.csv
+input/collserola_scrap.csv
+input/collserola_scrap_v2.csv
+input/track_fit.csv
 .DS_Store
